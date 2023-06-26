@@ -33,6 +33,9 @@ import Calculator
 import Deque (Deque)
 import qualified Deque as DQ
 import State
+import System.Posix (fileSize)
+import Distribution.Simple.Utils (xargs)
+import Data.Time.Format.ISO8601 (yearFormat)
 
 
 -- Section 1
@@ -71,11 +74,44 @@ instance Monad Deque where
 
 
 -- Section 2
+maybeMap :: (a -> b) -> Maybe a -> Maybe b
+maybeMap f (Just x) = Just $ f x
+maybeMap _ _ = Nothing
+
+splitOn :: Char -> String -> Maybe (String, String)
+splitOn _ [] = Nothing
+splitOn c (x : xs) | c == x = Just ([], xs)
+splitOn c (x : xs) = maybeMap (\ (p, s) -> (x : p, s)) $ splitOn c xs
+
+getMap :: String -> Map String String
+getMap input = M.fromList $ map (\g -> fromMaybe ("","") (splitOn ',' (filter (/=' ') g))) (lines input)
+
 joinGrades :: FilePath -> FilePath -> FilePath -> IO ()
-joinGrades = undefined
+joinGrades groupsFile gradesFile outputFile = do
+    groupsRaw <- readFile groupsFile
+    gradesRaw <- readFile gradesFile
+    let groupsMap = getMap groupsRaw
+    let gradesMap = getMap gradesRaw
+    let outputMap = M.map (\v -> fromMaybe "0" (M.lookup v gradesMap)) groupsMap
+    let outputRaw = unlines $ map (\(a,b) -> a ++ ", " ++ b) (M.toList outputMap)
+    writeFile outputFile outputRaw
+
+-- joinGrades "groups.txt" "grades.txt" "output.txt"
+    
+
 -- Section 3
 guessingGame :: Int -> Int -> IO Int
-guessingGame = undefined
+guessingGame x y = 
+    if x == y then return x else 
+    do
+    let guess = x + div (y-x) 2
+    putStrLn ("Is the number less than , equal , or greater than " ++ show guess ++ "? (l/e/g)")
+    answer <- getLine
+    case answer of
+        "l" -> guessingGame x guess
+        "e" -> return guess
+        "g" -> guessingGame guess y
+        _ -> guessingGame x y
 
 -- Section 4
 data Result = Result
