@@ -127,6 +127,6 @@ runCalculator (x: xs) = go (x: xs) Result { finalValues = M.empty, missingVariab
     go ((v, e): xs') (Result f m d) = case evaluate f e of
         Left e' -> case e' of
             DivisionByZero -> go xs' Result {finalValues = f, missingVariables = m, divisionByZero = d + 1 }
-            MissingIdentifier _ -> go xs' Result {finalValues = f, missingVariables = M.insert v (fromMaybe 0 (M.lookup v m) + 1) m , divisionByZero = d }
+            MissingIdentifier v' -> go xs' Result {finalValues = f, missingVariables = M.insert v (fromMaybe 0 (M.lookup v' m) + 1) (M.insert v' (fromMaybe 0 (M.lookup v m) + 1) m) , divisionByZero = d }
         Right x' -> go xs' Result { finalValues = M.insert v x' f, missingVariables = m, divisionByZero = d }
     go [] r = r
