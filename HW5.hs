@@ -37,7 +37,6 @@ import System.Posix (fileSize)
 import Distribution.Simple.Utils (xargs)
 import Data.Time.Format.ISO8601 (yearFormat)
 
-
 -- Section 1
 data NonEmpty a = a :| [a] deriving (Show, Eq, Ord, Functor, Foldable)
 instance Semigroup (NonEmpty a) where
@@ -84,7 +83,7 @@ splitOn c (x : xs) | c == x = Just ([], xs)
 splitOn c (x : xs) = maybeMap (\ (p, s) -> (x : p, s)) $ splitOn c xs
 
 getMap :: String -> Map String String
-getMap input = M.fromList $ map (\g -> fromMaybe ("","") (splitOn ',' (filter (/=' ') g))) (lines input)
+getMap input = M.fromList $ map (fromMaybe ("","") . splitOn ',' . filter (/=' ')) (lines input)
 
 joinGrades :: FilePath -> FilePath -> FilePath -> IO ()
 joinGrades groupsFile gradesFile outputFile = do
@@ -97,12 +96,12 @@ joinGrades groupsFile gradesFile outputFile = do
     writeFile outputFile outputRaw
 
 -- joinGrades "groups.txt" "grades.txt" "output.txt"
-    
+
 
 -- Section 3
 guessingGame :: Int -> Int -> IO Int
-guessingGame x y = 
-    if x == y then return x else 
+guessingGame x y =
+    if x == y then return x else
     do
     let guess = x + div (y-x) 2
     putStrLn ("Is the number less than , equal , or greater than " ++ show guess ++ "? (l/e/g)")
@@ -120,5 +119,14 @@ data Result = Result
     , divisionByZero :: Int
     }
     deriving (Show, Eq)
+
 runCalculator :: [(String, Expression)] -> Result
-runCalculator = undefined
+runCalculator [] = Result { finalValues = M.empty, missingVariables = M.empty, divisionByZero = 0}
+runCalculator (x: xs) = go (x: xs) Result { finalValues = M.empty, missingVariables = M.empty, divisionByZero = 0} where
+    go :: [(String, Expression)] -> Result -> Result
+    go ((v, e): xs') (Result f m d) = case evaluate f e of
+        Left e' -> case e' of
+            DivisionByZero -> go xs' Result {finalValues = f, missingVariables = m, divisionByZero = d + 1 }
+            MissingIdentifier _ -> go xs' Result {finalValues = f, missingVariables = M.insert v (fromMaybe 0 (M.lookup v m) + 1) m , divisionByZero = d }
+        Right x' -> go xs' Result { finalValues = M.insert v x' f, missingVariables = m, divisionByZero = d }
+    go [] r = r
